@@ -9,6 +9,7 @@ public class NewBehaviourScript : MonoBehaviour
     [Header("Player Movement")]
     public float moveSpeed = 5.0f; //이동 속도
     public float jumpForce = 5.0f; //점프 힘
+    public float rotationSpeed = 10f; //회전속도
 
     //카메라 설정 변수
     [Header("Camera Settings")]
@@ -60,6 +61,11 @@ public class NewBehaviourScript : MonoBehaviour
         HandleCameraToggle();
     }
 
+    private void FixedUpdate()
+    {
+        HandleMovement();
+    }
+
     //카메라 및 캐릭터 회전을 설정하는 함수
     void HandleRotation()
     {
@@ -75,13 +81,13 @@ public class NewBehaviourScript : MonoBehaviour
         targetVerticalRoataion = Mathf.Clamp(targetVerticalRoataion, yMinLimit, yMaxLimit); //수직 회전 제한
         phi = Mathf.MoveTowards(phi, targetVerticalRoataion, verticalRotationSpeed * Time.deltaTime);
 
-        //플레이어 회전(캐릭터가 수평으로만 회전)
-        transform.rotation = Quaternion.Euler(0.0f, theta, 0.0f);
 
         if (isGrounded)
         {
-            firstPersonCamera.transform.localRotation = Quaternion.Euler(phi, 0.0f, 0.0f);//1인칭 카메라 수직 회전
+            transform.rotation = Quaternion.Euler(0.0f, theta, 0.0f);
+            firstPersonCamera.transform.localRotation = Quaternion.Euler(phi, 0.0f, 0.0f);//1인칭 카메라 수직 회전        
         }
+
         else
         {
             //3인칭 카메라 구면 좌표계에서 위치 및 회전 계산
@@ -136,6 +142,7 @@ public class NewBehaviourScript : MonoBehaviour
         float moveHorizontat = Input.GetAxis("Horizontal"); //좌우 입력(-1,1)
         float moveVerical = Input.GetAxis("Vertical");  //앞뒤 입력(1,-1)
 
+        Vector3 movement;
         if (!isFirstPerson)//3인칭 모드 일 때, 카메라 방향으로 이동처리
         {
             Vector3 cameraForward = thiedPersonCamera.transform.forward; //카메라 앞 방향
@@ -147,18 +154,24 @@ public class NewBehaviourScript : MonoBehaviour
             cameraRight.Normalize();
 
             //이동 벡터 계산
-            Vector3 movement = transform.right * moveHorizontat + cameraRight * moveHorizontat;
-            rb.MovePosition(rb.position + movement * moveSpeed * Time.deltaTime); //물리 기반 이동
+            movement = cameraForward * moveVerical + cameraRight * moveHorizontat;
         }
 
         else
         {
 
             //캐릭터 기준으로 이동(1인칭)
-            Vector3 movement = transform.right * moveHorizontat + transform.forward * moveVerical;
-            rb.MovePosition(rb.position + movement * moveSpeed * Time.deltaTime); //물리 기반 이동
+            movement = transform.right * moveHorizontat + transform.forward * moveVerical;
+
 
         }
-
+        //이동 방향으로 캐릭터 회전
+        if (movement.magnitude > 0.1f)
+        {
+            Quaternion toRotation = Quaternion.LookRotation(movement, Vector3.up);
+            transform.rotation = Quaternion.Slerp(transform.rotation, toRotation, rotationSpeed * Time.deltaTime);
+        }
+        rb.MovePosition(rb.position + movement * moveSpeed * Time.deltaTime); //물리 기반 이동
     }
 }
+
